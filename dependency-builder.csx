@@ -27,7 +27,10 @@ void BuildDependencyGraph(
                 BuildDependencyGraph(registry, tn, out var _);
             }
         }
-        (node.Nodes as List<Node>).AddRange(typeNodes);
+        if (node.Nodes is List<Node> nodes && nodes.Count == 0)
+        {
+            nodes.AddRange(typeNodes);
+        }
     }
     mutated = node;
 }

@@ -1,7 +1,9 @@
 #load "walker.csx"
 
 using System.Text.RegularExpressions;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
 class JTokenWrapper
 {
     public JToken Token { get; set; }
@@ -30,28 +32,35 @@ public Dictionary<string, List<List<string>>> FlattenAndReducePath(
                 .SelectTokens("$..*")
                 .Where(t => !t.HasValues && !IsExcludedPath(t.Path))
                 .Select(t => new JTokenWrapper() { Token = t, Path = TransformPath(t, t.Path) });
-            void ReducePath(IList<JTokenWrapper> source)
+            // ! <DEBUG>
+            var payload = JsonConvert.SerializeObject(flattened.Select(jw => jw.Path), Formatting.Indented);
+            var outFile = "pre-result.json";
+            File.WriteAllText(Path.Combine(GetScriptFolder(), "out", outFile), payload);
+            // ! END <DEBUG>
+            bool ReducePath(IList<JTokenWrapper> source)
             {
                 // var queryToReduce = source.Where(t => t.path.Count(c => c == '.') > 1);
                 var queryToReduce = source.Where(
                     t => OccurrencesOfSpecialNodeSubstring(t.Path) > 1).ToList();
                 var parentTokens = source.Where(
                     t => OccurrencesOfSpecialNodeSubstring(t.Path) == 1).ToList();
-                if (queryToReduce.Any())
+                if (queryToReduce.Any() && parentTokens.Count > 0)
                 {
                     foreach (var parentToken in parentTokens)
                     {
                         var (token, path) = parentToken;
                         var parentTokenKey = path.Split('.').First(s => s.StartsWith("Nodes"));
+                        var parentTokenKeyMatch = path.Replace($".{token}", "");
                         var regex = new Regex(Regex.Escape(parentTokenKey));
                         foreach (var item in queryToReduce
-                                                .Where(t => t.Path.StartsWith(parentTokenKey)))
+                                                .Where(t => t.Path.StartsWith(parentTokenKeyMatch)))
                         {
                             item.Path = regex.Replace(item.Path, token.Value<string>(), 1);
                         }
                         parentToken.Path = regex.Replace(parentToken.Path, string.Empty, 1);
+                        // System.Console.WriteLine(parentToken.Path);
                     }
-                    ReducePath(source);
+                    // ReducePath(source);
                 }
                 else if (parentTokens.Any())
                 {
@@ -60,12 +69,16 @@ public Dictionary<string, List<List<string>>> FlattenAndReducePath(
                         parentToken.Path = Regex.Replace(parentToken.Path, @"Nodes\[\d+\].*", parentToken.Token.ToString());
                     }
                 }
-
+                else
+                {
+                    return true;
+                }
+                return false;
                 static int OccurrencesOfSpecialNodeSubstring(string s) =>
                     Regex.Matches(s, @"Nodes\[\d+\]").Count;
             }
             var reduced = flattened.ToList();
-            ReducePath(reduced);
+            while (!ReducePath(reduced)) { };
             var properties = reduced.Select(tw => tw.Path).ToList();
             if (properties.Count > 1)
             {

@@ -21,7 +21,8 @@ using System.Xml.Linq;
 /// * Script to generate json-data-source-from-csharp-file
 /// </summary>
 /// 
-var file = "CobsService-light.cs";
+var file = "CobsService.cs";
+// var file = "CobsService-light.cs";
 private readonly string programText = File.ReadAllText(
     Path.Combine(GetScriptFolder(), "test-data", file));
 
