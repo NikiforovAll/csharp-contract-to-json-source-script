@@ -6,8 +6,45 @@ public static class NodeExtensions
 {
     public static Node ToNode(PropertyDeclarationSyntax pds)
     {
-        return null;
+        var name = pds.Identifier.ToString();
+        var type = pds.Type;
+        return type switch
+        {
+            IdentifierNameSyntax ins => CreateNode(name, ins.Identifier.ToString()),
+            // TODO: it does not match fully named built-in types
+            PredefinedTypeSyntax pts => CreateNode(
+                name,
+                type: pts.Keyword.ToString(),
+                isTerminal: true),
+            ArrayTypeSyntax ats => ats.ElementType switch
+            {
+                PredefinedTypeSyntax pts => CreateNode(
+                    name,
+                    type: pts.Keyword.ToString(),
+                    isTerminal: true),
+                IdentifierNameSyntax ins => CreateNode(name, ins.Identifier.ToString()),
+                _ => throw new InvalidOperationException(nameof(ToNode))
+            },
+            _ => throw new InvalidOperationException(nameof(ToNode))
+        };
     }
+
+    public static Node CreateNode(
+        string name,
+        string type,
+        bool isTerminal = false)
+        => !isTerminal ? new Node()
+        {
+            Name = name,
+            Type = type,
+            Nodes = new List<Node>()
+        }
+        : new TerminalNode()
+        {
+            Name = name,
+            Type = type,
+            Nodes = new List<Node>()
+        };
 }
 
 public class Node
@@ -23,7 +60,7 @@ public class TerminalNode : Node
 
 class ContractDefinitionCollector : CSharpSyntaxWalker
 {
-    public IDictionary<string, IList<Node>> TopLevelDeclarations { get; set; } 
+    public IDictionary<string, IList<Node>> TopLevelDeclarations { get; set; }
         = new Dictionary<string, IList<Node>>();
     public override void VisitClassDeclaration(ClassDeclarationSyntax node)
     {

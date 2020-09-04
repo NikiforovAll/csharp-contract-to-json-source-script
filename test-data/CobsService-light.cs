@@ -24,6 +24,11 @@ namespace DomainBellaNS.API
 
             [DataMember]
             public CobsDslHeaderDto header { get; set; }
+
+            public CobsDslHeaderDto header2 { get; set; }
+
+            public int value { get; set; }
+
             /*[DataMember]
             public DataExistingLineDto dataExistingLine { get; set; }
             [DataMember]
