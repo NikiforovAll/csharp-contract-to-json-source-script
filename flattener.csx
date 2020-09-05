@@ -1,4 +1,5 @@
 #load "walker.csx"
+#load "scripts-utils.csx"
 
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -57,7 +58,9 @@ public Dictionary<string, List<List<string>>> FlattenAndReducePath(
                         {
                             item.Path = regex.Replace(item.Path, token.Value<string>(), 1);
                         }
-                        parentToken.Path = regex.Replace(parentToken.Path, string.Empty, 1);
+                        parentToken.Path = regex
+                            .Replace(parentToken.Path, string.Empty, 1)
+                            .Replace("..", ".");
                         // System.Console.WriteLine(parentToken.Path);
                     }
                     // ReducePath(source);
@@ -66,7 +69,10 @@ public Dictionary<string, List<List<string>>> FlattenAndReducePath(
                 {
                     foreach (var parentToken in parentTokens)
                     {
-                        parentToken.Path = Regex.Replace(parentToken.Path, @"Nodes\[\d+\].*", parentToken.Token.ToString());
+                        parentToken.Path = Regex.Replace(
+                            parentToken.Path,
+                            @"Nodes\[\d+\].*",
+                            parentToken.Token.ToString());
                     }
                 }
                 else

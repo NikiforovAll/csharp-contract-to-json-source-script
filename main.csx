@@ -33,12 +33,13 @@ var collector = new ContractDefinitionCollector();
 collector.Visit(root);
 
 WriteProgress($"Parsing source file... [{file}]");
-WriteLine("Found:");
 var registry = collector.TopLevelDeclarations;
-foreach (var item in registry)
-{
-    WriteLine($"\t{item.Key}");
-}
+
+WriteLine($"Found [{registry.Count}] delcarations");
+// foreach (var item in registry)
+// {
+//     WriteLine($"\t{item.Key}");
+// }
 
 BuildDependencyGraph(registry);
 
@@ -55,10 +56,40 @@ foreach (var item in models)
 {
     WriteLine($"\t{item}");
 }
-var transformed = processedContracts.ToDictionary(
+Dictionary<string, IEnumerable<string>> transformed = processedContracts.ToDictionary(
     kvp => kvp.Key,
     kvp => kvp.Value.SelectMany(l => l).Select(p => $"{p}"));
-var payload = JsonConvert.SerializeObject(transformed, Formatting.Indented);
+
+JObject jobject = JObject.FromObject(transformed);
+
+// post processing and transforming to a form
+// also, for some reason, containers still has double .. in the key
+// this allows to delete items based on that creteria
+foreach (var jkey in jobject)
+{
+    foreach (var jtoken in jkey.Value.ToList())
+    {
+        if (jtoken.ToString().Contains(".."))
+        {
+            jtoken.Remove();
+        }
+        else
+        {
+            jtoken.Replace(
+                new JObject()
+                {
+                    [jtoken.Value<string>()] = new JObject()
+                    {
+                        ["source"] = "",
+                        ["description"] = ""
+                    }
+                }
+            );
+        }
+    }
+}
+
+var payload = JsonConvert.SerializeObject(jobject, Formatting.Indented);
 
 var outFile = "result.json";
 WriteProgress($"Writing to {outFile}...");
